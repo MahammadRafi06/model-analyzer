@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart.fullname" . }}-triton-http
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.tritonHttp.type }}
+  selector:
+    app: triton
+    {{- include "chart.selectorLabels" . | nindent 4 }}
+  ports:
+  {{- .Values.tritonHttp.ports | toYaml | nindent 2 }}

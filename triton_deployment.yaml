@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-server-deployment
+  labels:
+    app.kubernetes.io/name: Triton-Server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton
+  template:
+    metadata:
+      labels:
+        app: triton
+    spec:
+      containers:
+      - name: triton-container
+        ports:
+        - containerPort: 8000
+          name: https
+        - containerPort: 8001
+          name: grpc
+        - containerPort: 8002
+          name: metric
+        image: nvcr.io/nvidia/tritonserver:25.06-py3
+        command: ['sh', '-c', 'tritonserver --model-repository=/models']
+        resources:
+          requests:
+            nvidia.com/gpu: 1 # Request 1 GPU
+          limits:
+            nvidia.com/gpu: 1 # Limit to 1 GPU
+        volumeMounts:
+        - name: model_repository
+          mountPath: /models   
+      initContainers:
+      - name: model-download
+        image: busybox:1.28
+        command:
+          - sh
+          - -c
+          - |
+            cd /models && \
+            wget https://raw.githubusercontent.com/MahammadRafi06/triton-server-deployment-/55cd6276b5554a61b997f97030fe23c9e93f6d0f/fetch_models.sh && \
+            chmod +x fetch_models.sh && \
+            ./fetch_models.sh && \
+            rm fetch_models.sh 
+        volumeMounts:
+          - name: model_repository
+            mountPath: /models 
+      volumes:
+        - name: model_repository
+          persistentVolumeClaim:
+            claimName: model-repo-claim 

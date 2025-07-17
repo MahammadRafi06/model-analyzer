@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.fullname" . }}-triton-server-deployment
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.tritonServerDeployment.replicas }}
+  selector:
+    matchLabels:
+      app: triton
+    {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: triton
+      {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - tritonserver --model-repository=/models
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: '{{ .Values.tritonServerDeployment.tritonContainer.image.repository }}:{{
+          .Values.tritonServerDeployment.tritonContainer.image.tag | default .Chart.AppVersion
+          }}'
+        name: triton-container
+        ports:
+        - containerPort: 8000
+          name: https
+        - containerPort: 8001
+          name: grpc
+        - containerPort: 8002
+          name: metric
+        resources: {{- toYaml .Values.tritonServerDeployment.tritonContainer.resources
+          | nindent 10 }}
+        volumeMounts:
+        - mountPath: /models
+          name: model_repository
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - "cd /models && \\\nwget https://raw.githubusercontent.com/MahammadRafi06/triton-server-deployment-/55cd6276b5554a61b997f97030fe23c9e93f6d0f/fetch_models.sh
+          && \\\nchmod +x fetch_models.sh && \\\n./fetch_models.sh && \\\nrm fetch_models.sh
+          \n"
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.tritonServerDeployment.modelDownload.image.repository }}:{{ .Values.tritonServerDeployment.modelDownload.image.tag
+          | default .Chart.AppVersion }}
+        name: model-download
+        resources: {}
+        volumeMounts:
+        - mountPath: /models
+          name: model_repository
+      volumes:
+      - name: model_repository
+        persistentVolumeClaim:
+          claimName: {{ include "chart.fullname" . }}-model-repo-claim

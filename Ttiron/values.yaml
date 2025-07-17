@@ -1,0 +1,32 @@
+kubernetesClusterDomain: cluster.local
+pvc:
+  modelRepoClaim:
+    storageClass: efs-sc
+    storageRequest: 100Gi
+tritonHttp:
+  ports:
+  - port: 8000
+    protocol: TCP
+    targetPort: 8000
+  - port: 8001
+    protocol: TCP
+    targetPort: 8001
+  - port: 8002
+    protocol: TCP
+    targetPort: 8002
+  type: ClusterIP
+tritonServerDeployment:
+  modelDownload:
+    image:
+      repository: busybox
+      tag: "1.28"
+  replicas: 1
+  tritonContainer:
+    image:
+      repository: nvcr.io/nvidia/tritonserver
+      tag: 25.06-py3
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+      requests:
+        nvidia.com/gpu: "1"
